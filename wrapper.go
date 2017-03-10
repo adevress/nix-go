@@ -1,4 +1,4 @@
-package gonix
+package nix
 
 /*
 #cgo CFLAGS: -I/home/didi/workspace/cnix-install/include
@@ -10,7 +10,7 @@ package gonix
 
 typedef void* cgo_nix_handle;
 
-
+const int cnix_error_ok_code = CNIX_ERROR_OK;
 
 
 
@@ -19,24 +19,44 @@ import "C"
 
 import(
     "unsafe"
+    "errors"    
 )
 
 
-
-func NixHandleCreate() C.cnix_handle_t {
-    h := C.cnix_handle_new()
-    return h
+type NixHandle struct {
+    h C.cnix_handle_t
 }
 
 
-func NixStorePath(h C.cnix_handle_t) string {
-    s := C.cnix_store_path(h)
+func nixCheckError() error {
+    if(C.cnix_error_code() == C.cnix_error_ok_code ){
+        return nil
+    }
+    
+    s := C.cnix_error_string()
+    res := C.GoString(s)
+    
+    C.cnix_error_reset()
+    
+    return errors.New(res)
+}
+
+func New() (NixHandle, error) {
+    intern_handle := C.cnix_handle_new()
+    handle := NixHandle{ h : intern_handle}
+    err := nixCheckError()
+    return handle, err
+}
+
+
+func (handle NixHandle) StorePath() string {
+    s := C.cnix_store_path(handle.h)
     res := C.GoString(s)
     C.free(unsafe.Pointer(s))
     return res
 }
 
 
-func NixHandleDestroy(h C.cnix_handle_t)  {
-    C.cnix_handle_delete(h)
+func Delete(handle NixHandle)  {
+    handle.h = nil
 }
